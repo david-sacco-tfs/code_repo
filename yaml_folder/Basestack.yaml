@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Core sub-account base - Full Stack
+Outputs:
+  SNSTopicARN:
+    Condition: conditionIncludeSNS
+    Value:
+      Fn::GetAtt:
+      - SNS
+      - Outputs.SNSTopicARN
+Parameters:
+  CustomerName:
+    AllowedPattern: '[a-z0-9]*'
+    Description: In lowercase; optionally abbreviated name.
+    Type: String
+  TemplateBaseURL:
+    Default: https://console.aws.amazon.com/s3/buckets/core-tech-ops/CloudFormation/Deployed-Stacks
+    Description: The base S3 URL for all relevant CF scripts; do not include trailing
+      slash i.e. 'https://s3.amazonaws.com/core-deployments/cloudformation' and not
+      'https://s3.amazonaws.com/core-deployments/cloudformation/'
+    Type: String
+  IncludeSNS:
+      Description: Include SNS? (Set to false if CoreIT SNS is already configured for this region)
+      ConstraintDescription: True for Yes or False for No
+      Type: String
+      Default: "True"
+      AllowedValues:
+        - "True"
+        - "False"
+Conditions:
+  conditionIncludeSNS:
+    Fn::Equals:
+      - Ref: IncludeSNS
+      - "True"
+Resources:
+  SNS:
+    Condition: conditionIncludeSNS
+    Properties:
+      Tags:
+      - Key: Customer
+        Value:
+          Ref: CustomerName
+      TemplateURL:
+        Fn::Join:
+        - /
+        - - Ref: TemplateBaseURL
+          - Sub-Account-Region-Base-SNS.yaml
+      TimeoutInMinutes: 5
+    Type: AWS::CloudFormation::Stack
+  RDSFlowLogs:
+    Properties:
+      Tags:
+      - Key: Customer
+        Value:
+          Ref: CustomerName
+      TemplateURL:
+        Fn::Join:
+        - /
+        - - Ref: TemplateBaseURL
+          - Sub-Account-Region-Base-RDSLogs.yaml
+      TimeoutInMinutes: 5
+    Type: AWS::CloudFormation::Stack
+  VPCFlowLogs:
+    Properties:
+      Tags:
+      - Key: Customer
+        Value:
+          Ref: CustomerName
+      TemplateURL:
+        Fn::Join:
+        - /
+        - - Ref: TemplateBaseURL
+          - Sub-Account-Region-Base-VPCFlowLogs.yaml
+      TimeoutInMinutes: 5
+    Type: AWS::CloudFormation::Stack

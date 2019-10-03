@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Lambda Function StackSet Deployment
+Parameters:
+  EnvName:
+    Type: String
+    Description: (Optional) Name of the account.
+    AllowedPattern: ^.*[^0-9]$
+  LambdaHandlerPath:
+    Type: String
+    Description: Path of Lambda Handler. Must be separate file.
+    AllowedPattern: ^.*[^0-9]$
+Outputs:
+  LambdaRoleARN:
+    Description: Role for Lambda execution.
+    Value:
+      Fn::GetAtt:
+        - LambdaRole
+        - Arn
+    Export:
+      Name:
+        Fn::Sub: LambdaRole
+  LambdaFunctionName:
+    Value:
+    Ref: LambdaFunction
+  LambdaFunctionARN:
+    Description: Lambda Function ARN.
+    Value:
+      Fn::GetAtt:
+        - LambdaFunction
+        - Arn
+    Export:
+      Name:
+        Fn::Sub: LambdaARN-${EnvName}
+Resources:
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: cloudwatch-alarms
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - cloudwatch:DescribeAlarms
+                - cloudwatch:DeleteAlarms
+                Effect: Allow
+                Resource: *
+        - PolicyName: ec2-instances
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - ec2:DescribeInstances
+                - ec2:DescribeTags
+                Effect: Allow
+                Resource: *
+  CloudwatchCleanerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: lambda-function-${EnvName}
+      Description: LambdaFunction for Testing
+      Runtime: python3.7
+      Code:
+        S3Bucket: core-tech-ops
+        S3Key: lambda-functions/Cloudwatch_Clearner_Test.py
+      Handler: ${LambdaHandlerPath}
+      MemorySize: 128
+      Timeout: 30
+      Role:
+        Fn::GetAtt:
+          - iamRole
+          - Arn
+      Enrivonment:
+        Variables:
+          ENV:
+            Fn::Sub: ${EnvName}
+          TZ: UTC
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - CloudwatchCleanerFunction
+          - Arn
+      Principal: events.amazonaws.com
+      SourceARN:
+        Fn::GetAtt:
+          - CloudwatchCleanerSchedule
+          - Arn
+  CloudwatchCleanerSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Scheduler for Cloudwatch Cleaner Script
+      Name: CloudwatchCleanerSchedule
+      ScheduleExpression: cron(0 8 1 * ? *)
+      State: ENABLED
+      Targets:
+        -
+          Arn:
+            Fn::GetAtt:
+              - CloudwatchCleanerFunction
+              - Arn
+            Id: CloudwatchCleanerFunction

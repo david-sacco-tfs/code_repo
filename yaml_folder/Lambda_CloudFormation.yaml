@@ -102,5 +102,5 @@ Resources:
           Arn:
             Fn::GetAtt:
               - CloudwatchCleanerFunction
-              - "Arn"
+              - Arn
             Id: CloudwatchCleanerFunction

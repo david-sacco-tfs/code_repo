@@ -57,6 +57,15 @@ Resources:
                 - ec2:DescribeTags
                 Effect: Allow
                 Resource: '*'
+        - PolicyName: cloudwatch-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - logs:createLogGroup
+                - logs:createLogStream
+                Effect: Allow
+                Resource: '*'
       RoleName: iam-cloudwatch-cleaner-role
   CloudwatchCleanerFunction:
     Type: AWS::Lambda::Function
@@ -67,16 +76,11 @@ Resources:
       Runtime: python3.7
       Code:
         S3Bucket: core-tech-ops
-        S3Key: lambda-functions/Cloudwatch_Clearner_Test.py
-      Handler: lambda_function.lambda_handler
+        S3Key: lambda-functions/Cloudwatch_Clearner_Test.py.zip
+      Handler: Cloudwatch_Clearner_Test.lambda_handler
       MemorySize: 128
       Timeout: 900
       Role: !GetAtt iamRole.Arn
-      Enrivonment:
-        Variables:
-          ENV:
-            Fn::Sub: ${EnvName}
-          TZ: UTC
   CloudwatchCleanerPolicy:        
     Type: AWS::Lambda::Permission
     Properties:
@@ -84,12 +88,12 @@ Resources:
       FunctionName:
         Fn::GetAtt:
           - CloudwatchCleanerFunction
-          - "Arn"
+          - Arn
       Principal: events.amazonaws.com
-      SourceARN:
-        Fn::GetAtt:
+      SourceArn:
+        !GetAtt
           - CloudwatchCleanerSchedule
-          - "Arn"
+          - Arn
   CloudwatchCleanerSchedule:
     Type: AWS::Events::Rule
     Properties:
@@ -102,5 +106,5 @@ Resources:
           Arn:
             Fn::GetAtt:
               - CloudwatchCleanerFunction
-              - Arn
-            Id: CloudwatchCleanerFunction
+              - "Arn"
+          Id: CloudwatchCleanerFunction

@@ -10,19 +10,19 @@ Outputs:
     Description: Role for Lambda execution.
     Value:
       Fn::GetAtt:
-        - LambdaRole
+        - iamRole
         - "Arn"
     Export:
       Name:
-        Fn::Sub: LambdaRole
+        Fn::Sub: iamRole
   LambdaFunctionName:
     Value:
-      Ref: LambdaFunction
+      Ref: CloudwatchCleanerFunction
   LambdaFunctionARN:
     Description: Lambda Function ARN.
     Value:
       Fn::GetAtt:
-        - LambdaFunction
+        - CloudwatchCleanerFunction
         - "Arn"
     Export:
       Name:
@@ -77,6 +77,7 @@ Resources:
           ENV:
             Fn::Sub: ${EnvName}
           TZ: UTC
+  CloudwatchCleanerPolicy:        
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction

@@ -29,7 +29,7 @@ Outputs:
         - Arn
     Export:
       Name:
-        Fn::Sub: LambdaARN-${EnvName}
+        Fn::Sub: LambdaARN-${AWS::AccountId}
 Resources:
   S3CleaneriamRole:
     Type: AWS::IAM::Role
@@ -57,7 +57,7 @@ Resources:
     Type: AWS::Lambda::Function
       Properties:
         FunctionName:
-          Fn::Sub: s3-cleaner-function-${EnvName}
+          Fn::Sub: s3-cleaner-function-${AWS::AccountId}
         Description: S3 cleaner lambda function.
         Environment:
           Variables:

@@ -29,7 +29,7 @@ Outputs:
         - "Arn"
     Export:
       Name:
-        Fn::Sub: LambdaARN-${EnvName}
+        Fn::Sub: LambdaARN-${AWS::AccountId}
 Resources:
   iamRole:
     Type: AWS::IAM::Role
@@ -74,7 +74,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName:
-        Fn::Sub: cloudwatch-cleaner-function-${EnvName}
+        Fn::Sub: cloudwatch-cleaner-function-${AWS::AccountId}
       Description: Cloudwatch Cleaner Lambda Job
       Environment:
         Variables:

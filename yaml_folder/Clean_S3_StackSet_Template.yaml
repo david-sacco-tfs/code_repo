@@ -5,6 +5,9 @@ Parameters:
     Type: String
     Description: (Optional) Provide an environment name.
     AllowedPattern: ^.*[^0-9]$
+  LambdaS3Key:
+    Type: String
+    Description: S3 file key path for lambda function.
 Outputs:
   LambdaRoleARN:
     Description: Lambda role for execution.
@@ -62,7 +65,8 @@ Resources:
         Runtime: python3.7
         Code:
           S3Bucket: core-tech-ops
-          S3Key: lambda-functions/<zip-file-name>
+          S3Key:
+            Ref: LambdaS3Key
         Handler: S3-Cleaner-Script.lambda_handler
         MemorySize: 128
         Timeout: 900

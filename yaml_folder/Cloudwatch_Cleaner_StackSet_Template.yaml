@@ -6,8 +6,8 @@ Parameters:
     Description: (Optional) Name of the account.
     AllowedPattern: ^.*[^0-9]$
   LambdaS3Key:
-    Description: S3 warfile key path to lambda function.
     Type: String
+    Description: S3 file key path to lambda function.
 Outputs:
   LambdaRoleARN:
     Description: Role for Lambda execution.

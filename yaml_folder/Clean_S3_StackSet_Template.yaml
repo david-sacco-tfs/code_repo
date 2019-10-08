@@ -1,0 +1,96 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: S3 Cleaner StackSet Template
+Parameters:
+  EnvName:
+    Type: String
+    Description: (Optional) Provide an environment name.
+    AllowedPattern: ^.*[^0-9]$
+Outputs:
+  LambdaRoleARN:
+    Description: Lambda role for execution.
+    Value:
+      Fn::GetAtt:
+        - S3CleaneriamRole
+        - Arn
+    Export:
+      Name:
+        Fn::Sub: S3CleaneriamRole
+  LambdaFunctionName:
+    Value:
+      Ref: S3CleanerFunction
+  LambdaFunctionARN:
+    Description: Lambda function ARN.
+    Value:
+      Fn::GetAtt:
+        - S3CleanerFunction
+        - Arn
+    Export:
+      Name:
+        Fn::Sub: LambdaARN-${EnvName}
+Resources:
+  S3CleaneriamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: s3-buckets
+          PolicyDocument:
+            Statement:
+              - Action:
+                - s3:ListBucket
+                - s3:GetObject
+                #- s3:DeleteObject
+                - s3:ListAllMyBuckets
+              Effect: Allow
+              Resource: '*'
+      RoleName: s3-cleaner-role
+  S3CleanerFunction:
+    Type: AWS::Lambda::Function
+      Properties:
+        FunctionName:
+          Fn::Sub: s3-cleaner-function-${EnvName}
+        Description: S3 cleaner lambda function.
+        Environment:
+          Variables:
+            loglevel: INFO
+        Runtime: python3.7
+        Code:
+          S3Bucket: core-tech-ops
+          S3Key: lambda-functions/<zip-file-name>
+        Handler: S3-Cleaner-Script.lambda_handler
+        MemorySize: 128
+        Timeout: 900
+        Role: !GetAtt S3CleaneriamRole.Arn
+  S3CleanerPolicy:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - S3CleanerFunction
+          - Arn
+      Principal: events.amazonaws.com
+      SourceArn:
+        !GetAtt
+          - S3CleanerSchedule
+          - Arn
+  S3CleanerSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Scheduler for S3 cleaner lambda function
+      Name: S3CleanerSchedule
+      ScheduleExpression: cron(0 12 31 12 ? *)
+      State: ENABLED
+      Targets:
+        -
+          Arn:
+            Fn::GetAtt:
+              - S3CleanerFunction
+              - Arn
+            Id: S3CleanerFunction

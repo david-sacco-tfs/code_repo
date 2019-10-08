@@ -1,10 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Lambda Function StackSet Deployment
+Description: Cloudwatch Cleaner StackSet
 Parameters:
   EnvName:
     Type: String
     Description: (Optional) Name of the account.
     AllowedPattern: ^.*[^0-9]$
+  LambdaS3Key:
+    Description: S3 warfile key path to lambda function.
+    Type: String
 Outputs:
   LambdaRoleARN:
     Description: Role for Lambda execution.
@@ -72,14 +75,15 @@ Resources:
     Properties:
       FunctionName:
         Fn::Sub: cloudwatch-cleaner-function-${EnvName}
-      Description: LambdaFunction for Testing
+      Description: Cloudwatch Cleaner Lambda Job
       Environment:
         Variables:
           loglevel: INFO
       Runtime: python3.7
       Code:
         S3Bucket: core-tech-ops
-        S3Key: lambda-functions/Cloudwatch_Clearner_Test.py.zip
+        S3Key:
+          Ref: LambdaS3Key
       Handler: Cloudwatch_Clearner_Test.lambda_handler
       MemorySize: 128
       Timeout: 900

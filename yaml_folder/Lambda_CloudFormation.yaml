@@ -73,6 +73,9 @@ Resources:
       FunctionName:
         Fn::Sub: cloudwatch-cleaner-function-${EnvName}
       Description: LambdaFunction for Testing
+      Environment:
+        Variables:
+          loglevel: INFO
       Runtime: python3.7
       Code:
         S3Bucket: core-tech-ops

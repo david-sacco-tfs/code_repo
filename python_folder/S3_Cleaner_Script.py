@@ -83,4 +83,7 @@ def check_date(seen,prefix='instanceLogs/'):
                                 print(e.message)
                         except Exception as e:
                             print("Error checking key for instanceLogs.", e.message)
-    
+def lambda_handler(event, context):
+    delete_old_logs()
+    bucket_check
+    check_date()

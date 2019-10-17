@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Automatic IAM User Audit and Management
+#Parameters:
+#Outputs:
+Resources:
+  iamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: create-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+                Effect: Allow
+                Resource: arn:aws:logs:*:*:*
+        - PolicyName: iam-access-key-audit
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - iam:DeleteAccessKey
+                - iam:GetAccessKeyLastUsed
+                - iam:UpdateAccessKey
+                - iam:ListUsers
+                - iam:ListAccessKeys
+                Effect: Allow
+                Resource: '*'
+      RoleName: iam-access-key-audit-role
+  iamInactiveUserAudit:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: iam-user-audit-${AWS::AccountId}
+      Description: Inactivate access keys last used 6 months ago, delete access keys last used 1 year ago.
+      Environment:
+        Variables:
+          loglevel: INFO
+      Runtime: python2.7
+      Code:
+        S3Bucket: core-tech-ops
+        S3Key: lambda-functions/iamInactiveUserAudit.zip
+      Handler: lambda_funtion.lambda_handler
+      MemorySize: 128
+      Timeout: 900
+      Role: !GetAtt iamRole.Arn
+  lambdaPermissionPolicy:        
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - iamInactiveUserAudit
+          - Arn
+      Principal: events.amazonaws.com
+      SourceArn:
+        !GetAtt
+          - iamInactiveUserAudit
+          - Arn
+  CloudwatchCleanerSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Scheduler for Cloudwatch Cleaner Script
+      Name: CloudwatchCleanerSchedule
+      ScheduleExpression: cron(0 1 ? * MON-SUN *)
+      State: ENABLED
+      Targets:
+        -
+          Arn:
+            Fn::GetAtt:
+              - iamInactiveUserAudit
+              - Arn
+          Id: CloudwatchCleanerFunction

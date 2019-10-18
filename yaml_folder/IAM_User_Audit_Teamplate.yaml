@@ -1,6 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Automatic IAM User Audit and Management
-#Parameters:
+Parameters:
+  LambdaS3Key:
+    Type: String
+    Description: S3 file key path to lambda function.
 #Outputs:
 Resources:
   iamRole:
@@ -50,7 +53,8 @@ Resources:
       Runtime: python2.7
       Code:
         S3Bucket: core-tech-ops
-        S3Key: lambda-functions/iamInactiveUserAudit.zip
+        S3Key:
+          Ref: LambdaS3Key            
       Handler: lambda_funtion.lambda_handler
       MemorySize: 128
       Timeout: 900

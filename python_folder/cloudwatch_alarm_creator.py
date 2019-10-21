@@ -3,77 +3,101 @@ import boto3 as bt
 import sys
 import logging
 import os
+from collections import defaultdict
 
-#set client
+# Variables
+evaluationPeriods=5
+CPUThreshhold=90
+DiskThreshhold=90
+MemoryThreshhold=98
+SwapThreshhold=5
+period=60
+ACCOUNT_ID = context.invoked_function_arn.split(":")[4]
+sns_Topic = ''
+complete = False
+
+# Set client
 client = bt.client('cloudwatch')
 client2 = bt.client('ec2')
-#It will return a nested list/dict.
-response = client.describe_alarms()
+client3 = bt.client('sns', region=AWS_REGION)
+
+# It will return a nested list/dict.
 rep = client2.describe_instances()
-#Setup lists to store info.
-alarmList = [] 
-instanceList = []
-delList = []
+coreit_sns = client3.list_topics()
+# Setup variables to store info.
+ec2info = defaultdict()
 logger = logging.getLogger()
+instanceList = []
+subscriptionList = sns.list_subscriptions()
+allSubscriptionsList = []
+allSubscriptionsList.extend(subscriptionList['Subscriptions'])
+
+##############################################################################
 
 def lambda_handler(event, context):
     setLogLevel(os.environ['logLevel'])
-    #Set logging
-    logger.debug('logLevel: '+os.environ['logLevel'])
+    logger.debug('logLevel: '+os.environ['logLevel']) #Set Logging
     logger.info('Checking cloudwatch.')
-    get_instances()
-    get_alarms()
-    compare()
+    get_coreit_sns_topic()
+    get_pending_instances()
+    create_alerts()
     
     message = 'Cloudwatch Alarm Creation Complete, yeet'
 
     return {
         'message':str(message)
-        }
+    }
 
-#Go through response to filter down to dimensions then get val from dimensions
-def get_instances():
+##############################################################################
+
+
+# Go through SNS to filter out CoreIT topic ONLY!!
+def get_coreit_sns_topic():
+    while (not complete):
+        if ('NextToken' in subscriptionList ) :
+            token = subscriptionList['NextToken']
+            subscriptionList = sns.list_subscriptions(NextToken=token)
+            allSubscriptionsList.extend(subscriptionList['Subscriptions'])
+        else :
+            complete = True
+
+    for subscription in allSubscriptionsList:
+        #print (subscription)
+        if 'CoreIT' in subscription['SubscriptionArn']:
+            snsTopic = subscription['TopicArn']
+            break
+
+    print(snsTopic)
+
+# Go through response to filter down to dimensions then get val from dimensions
+def get_pending_instances():
     #This get's each instance
     for it in rep['Reservations']:
         for p in it['Instances']:
             #Adding to list to compare
-            if(p['State']['Name'] != 'pending'):
+            if(p['State']['Name'] == 'pending'):
                 instanceList.append(p['InstanceId'])
         
-#Function to delete the alerts that have no active instances.
-def create_alert_1():
-    # Delete alarm
-    for alarm in alarmList:
-        logger.info("Alarm that will be created: {}".format(alarm))
-    # for d in instanceList:
-    #     client.put_metric_alarm(
-    #     AlarmNames='',
-    #     ComparisonOperator='',
-    #     EvaluationPeriods=3,
-    #     MetricName='',
-    #     Namespace='AWS/EC2',
-    #     Period=15,
-    #     Statistic='',
-    #     Threshold=<float>,
-    #     ActionsEnabled=false,
-    #     AlarmDescription='',
-    #
-    #     )
-    #     print("Deleted: ",d)
-
-
-def compare():
-    assert len(alarmList) >=0, logger.warning('AlarmList is list than 0. How?')
-    try:
-        if(len(alarmList) != 0):
-            del_alerts()
-        else:
-            logger.info("Nothing to be deleted. Good job!")
-    except:
-        logger.error("An exception has occurred during comparison:",sys.exc_info())
-
-
-
+# Function to create alerts for instances that are in 'pending'.
+def create_alerts():
+    for d in instanceList:
+        ##### Swap Threshold Alarm Creation ####
+        client.put_metric_alarm(
+            AlarmNames='High-Swap-Utilization-' + (AWS_REGION) + '-' + (ACCOUNT_ID) + '-' + ,
+            AlarmActions=sns_Topic,
+            ComparisonOperator='GreaterThanThreshold',
+            EvaluationPeriods=evaluationPeriods,
+            MetricName='SwapUtilization',
+            Namespace='System/Linux',
+            Period=15,
+            Statistic='Average',
+            Threshold=SwapThreshhold,
+            TreatMissingData='Missing'
+            Unit='Percent',
+            ActionsEnabled=false,
+            AlarmDescription=('Alarm when Swap exceeds' + SwapThreshold + 'percent over' + evaluationPeriods + 'minutes.')
+        )
+        print("Created: ", d)   
 
 def setLogLevel(logLevel):
     if logLevel.lower() == 'debug':

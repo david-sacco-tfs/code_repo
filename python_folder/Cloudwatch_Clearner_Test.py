@@ -12,7 +12,6 @@ client2 = bt.client("ec2")
 response = client.describe_alarms()
 rep = client2.describe_instances()
 #Setup lists to store info.
-#emptyAlarm = []
 alarmList = [] 
 instanceList = []
 delList = []
